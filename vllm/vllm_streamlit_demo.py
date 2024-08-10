@@ -1,15 +1,16 @@
-from langchain_model import Qwen2_LLM
 import streamlit as st
 import datetime
 import pytz
 import time
+
+from vllm_model3 import get_model, get_completion, call
 
 model_name_or_path = "/root/autodl-tmp/insult_code/qwen/Qwen2-7B-Instruct"
 
 
 @st.cache_resource
 def load_model():
-    llm = Qwen2_LLM(model_name_or_path)
+    llm = get_model(model_name_or_path)
     return llm
 
 
@@ -43,8 +44,7 @@ def main():
 
         st.sidebar.subheader("参数控制：")
         # 创建一个滑块，用于选择最大长度，范围在0到1024之间，默认值为512
-        max_length = st.slider("Max input tokens", 0, 1024, 512, step=1)
-        max_new_tokens = st.slider("Max output tokens", 0, 1024, 512, step=1)
+        max_tokens = st.slider("Max input tokens", 0, 1024, 512, step=1)
         temperature = st.slider("Temperature", 0.0, 1.0, 0.7, step=0.1)
         # 方框风格的选择样式
         # temperature = st.number_input("Temperature", min_value=0.01, max_value=0.99, value=0.7, step=0.05)
@@ -54,7 +54,7 @@ def main():
         st.button("清空会话", on_click=init_session)
 
     st.title("LLM Chat Robot")
-    st.caption("🚀 A streamlit chatbot demo, base langchain inference")
+    st.caption("🚀 A streamlit chatbot demo, base vllm inference")
 
     # 初始化问候消息
     if "messages" not in st.session_state:
@@ -67,7 +67,7 @@ def main():
 
     # 提问框和对话模块设置
     if prompt := st.chat_input("Ask anything"):
-        prompt = check_len(prompt, max_length)
+        prompt = check_len(prompt, max_tokens)
         st.chat_message("user").markdown(prompt)
         # 保存历史
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -75,10 +75,12 @@ def main():
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
             full_response = ""
-            # 调用大模型获取结果
-            param = dict(max_length=max_length, max_new_tokens=max_new_tokens, temperature=temperature)
+            # 调用大模型获取结果，主要此处参数需要适配
+            param = dict(max_tokens=max_tokens, temperature=temperature)
             print(f"parameter: {param}")
-            response = generate(llm, prompt, **param)
+            sampling_params = get_completion(**param)
+            response = generate(llm, prompt, sampling_params)
+
             for trunk in list(response):
                 full_response += trunk
                 time.sleep(0.05)
@@ -111,9 +113,8 @@ def init_session():
     st.session_state.messages.append({"role": "assistant", "content": "你好，有什么可以帮助你吗？"})
 
 
-def generate(llm, prompt, **param):
-    response = llm(prompt, **param)
-    return response
+def generate(llm, prompt, sampling_params):
+    return call(llm, prompt, sampling_params)
 
 
 if __name__ == "__main__":
