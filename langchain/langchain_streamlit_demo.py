@@ -33,7 +33,7 @@ def main():
     # 左侧导航栏
     with st.sidebar:
         st.sidebar.header("Streamlit 构建 LLM 模型demo")
-        st.caption(":fire: [Github代码地址](https://github.com/hgsw/streamlit)")
+        st.caption(":fire: [Github代码地址](https://github.com/hgsw/llm.git)")
         # 导航栏显示日期
         st.sidebar.date_input("当前日期：", st.session_state.date_time.date())
 
